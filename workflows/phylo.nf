@@ -66,6 +66,66 @@ process CALC_MATRIX {
     """
 }
 
+process SPLIT_BY_SEROTYPE {
+    input:
+    path sequences
+    path metadata
+
+    output:
+    path "DENV*.fasta", emit: serotype_fastas
+
+    script:
+    """
+    python3 $baseDir/scripts/split_by_serotype.py \
+        --sequences ${sequences} \
+        --metadata ${metadata}
+    """
+}
+
+process RUN_MAFFT_SEROTYPE {
+    input:
+    path unaligned
+
+    output:
+    tuple val("${unaligned.baseName}"), path("${unaligned.baseName}_aligned.fasta"), emit: alignment
+
+    script:
+    """
+    mafft --auto --thread ${task.cpus} ${unaligned} > ${unaligned.baseName}_aligned.fasta
+    """
+}
+
+process RUN_IQTREE_SEROTYPE {
+    publishDir "${params.results_dir}/phylo/serotype", mode: 'copy'
+
+    input:
+    tuple val(serotype), path(alignment)
+
+    output:
+    tuple val(serotype), path("${serotype}.nwk"), emit: tree
+
+    script:
+    """
+    iqtree2 -s ${alignment} -m GTR+I+G -nt AUTO -bb 1000 -pre ${serotype}_analysis
+    mv ${serotype}_analysis.treefile ${serotype}.nwk
+    """
+}
+
+process CALC_MATRIX_SEROTYPE {
+    publishDir "${params.results_dir}/phylo/serotype", mode: 'copy'
+
+    input:
+    tuple val(serotype), path(alignment)
+
+    output:
+    tuple val(serotype), path("${serotype}_distance_matrix.tsv"), emit: matrix
+
+    script:
+    """
+    python3 $baseDir/scripts/calc_matrix.py --input ${alignment} --output ${serotype}_distance_matrix.tsv
+    """
+}
+
 workflow PHYLO_ANALYSIS {
     take:
     fhir_files
@@ -77,8 +137,17 @@ workflow PHYLO_ANALYSIS {
     RUN_IQTREE(RUN_MAFFT.out.alignment)
     CALC_MATRIX(RUN_MAFFT.out.alignment)
 
+    SPLIT_BY_SEROTYPE(PREPARE_DATA.out.unaligned, PREPARE_DATA.out.metadata)
+    serotype_ch = SPLIT_BY_SEROTYPE.out.serotype_fastas.flatten()
+    RUN_MAFFT_SEROTYPE(serotype_ch)
+    RUN_IQTREE_SEROTYPE(RUN_MAFFT_SEROTYPE.out.alignment)
+    CALC_MATRIX_SEROTYPE(RUN_MAFFT_SEROTYPE.out.alignment)
+
+    serotype_trees = RUN_IQTREE_SEROTYPE.out.tree.map { serotype, tree -> tree }.collect()
+
     emit:
-    matrix   = CALC_MATRIX.out.matrix
-    tree     = RUN_IQTREE.out.tree
-    metadata = PREPARE_DATA.out.metadata
+    matrix          = CALC_MATRIX.out.matrix
+    tree            = RUN_IQTREE.out.tree
+    metadata        = PREPARE_DATA.out.metadata
+    serotype_trees  = serotype_trees
 }
