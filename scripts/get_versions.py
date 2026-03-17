@@ -3,7 +3,7 @@ import importlib
 
 def main():
     packages = [
-        "pandas", "networkx", "pyvis", "matplotlib", 
+        "pandas", "matplotlib", 
         "seaborn", "numpy", "Bio"
     ]
 
