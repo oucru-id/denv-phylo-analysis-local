@@ -24,12 +24,32 @@ process VISUALIZE_REPORT {
     """
 }
 
+process VISUALIZE_SEROTYPE_TREES {
+    publishDir "${params.results_dir}/visualization", mode: 'copy'
+
+    input:
+    path serotype_trees
+    path metadata
+
+    output:
+    path "serotype_*.png", emit: serotype_plots
+
+    script:
+    """
+    python3 $baseDir/scripts/visualize_results.py \
+        --metadata ${metadata} \
+        --serotype_trees ${serotype_trees}
+    """
+}
+
 workflow VISUALIZATION {
     take:
     matrix
     metadata
     tree
+    serotype_trees
 
     main:
     VISUALIZE_REPORT(matrix, metadata, tree)
+    VISUALIZE_SEROTYPE_TREES(serotype_trees, metadata)
 }
