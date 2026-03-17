@@ -3,8 +3,9 @@
 nextflow.enable.dsl = 2
 
 log.info """
-    Dengue Virus (Whole-Genome) Phylogeny & Visualization Pipeline (v${params.version})
-    Created by SPHERES Lab Team
+    Pan-serotype DENV Federated Phylogeny & Visualization Pipeline (Local Lab)
+    Version: ${params.version}
+    Developed by SPHERES Lab Team
 """
 
 include { PHYLO_ANALYSIS } from './workflows/phylo.nf'
@@ -16,6 +17,11 @@ workflow {
     ref_ch = Channel.fromPath(params.reference, checkIfExists: true).collect()
 
     PHYLO_ANALYSIS(fhir_ch, ref_ch)
-    VISUALIZATION(PHYLO_ANALYSIS.out.matrix, PHYLO_ANALYSIS.out.metadata, PHYLO_ANALYSIS.out.tree)
+    VISUALIZATION(
+        PHYLO_ANALYSIS.out.matrix,
+        PHYLO_ANALYSIS.out.metadata,
+        PHYLO_ANALYSIS.out.tree,
+        PHYLO_ANALYSIS.out.serotype_trees
+    )
     VERSIONS()
 }
