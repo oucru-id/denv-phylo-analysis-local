@@ -15,8 +15,6 @@ process VERSIONS {
     
     echo "tools:" >> software_versions.yml
     echo "  mafft: \$(mafft --version 2>&1 | head -n 1 | awk '{print \$1}')" >> software_versions.yml
-    echo "  iqtree: \$(iqtree2 --version | head -n 1 | awk '{print \$1}')" >> software_versions.yml
-
     python3 $baseDir/scripts/get_versions.py >> software_versions.yml
     """
 }
