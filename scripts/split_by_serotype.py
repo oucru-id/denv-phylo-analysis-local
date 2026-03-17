@@ -41,7 +41,7 @@ def main():
         serotype_seqs.setdefault(serotype, []).append(record)
 
     for serotype, records in serotype_seqs.items():
-        if len(records) < 3:
+        if len(records) < 4:
             print(f"Skipping {serotype}: only {len(records)} sequences")
             continue
         filename = f"{serotype.replace('-', '')}.fasta"
